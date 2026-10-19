@@ -1,5 +1,5 @@
 import { Lock, Zap } from "lucide-react";
-import logoAsset from "@/assets/azox/azox-logo.png.asset.json";
+
 
 type Props = {
   state: "ready" | "playing" | "locked";
@@ -53,7 +53,7 @@ export default function TapZone({ state, onTap, label }: Props) {
         }}
       >
         <img
-          src={logoAsset.url}
+          src="/assets/azox/azox-logo.png"
           alt=""
           width={220}
           height={220}
