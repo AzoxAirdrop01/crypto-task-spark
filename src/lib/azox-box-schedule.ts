@@ -1,7 +1,7 @@
 export const BOXES_PER_DAY = 20;
 export const SESSION_SECONDS = 90;
 export const MAX_WINNERS = 65000;
-export const BOX_REWARD = 1600;
+export const BOX_REWARD = 3600;
 
 export function dateKey(d: Date): string {
   const y = d.getFullYear();

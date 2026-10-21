@@ -43,18 +43,18 @@ describe("daily game batch rewards", () => {
     expect(QUESTIONS_PER_DAY).toBe(5);
   });
 
-  it("Word completes with one backend call and grants +2 units", async () => {
+  it("Word completes with one backend call and grants +10 units", async () => {
     const f = fake();
     const r = await f.call("word", [0, 1, 2, 3, 4]);
     expect(f.calls).toBe(1);
-    expect(r).toEqual({ points: 5 * WORD_POINTS, granted: 5, allRecorded: true, unitsAdded: 2 });
+    expect(r).toEqual({ points: 5 * WORD_POINTS, granted: 5, allRecorded: true, unitsAdded: 10 });
   });
 
-  it("Question Day completes with one backend call and grants +2 units", async () => {
+  it("Question Day completes with one backend call and grants +10 units", async () => {
     const f = fake();
     const r = await f.call("question", [0, 1, 2, 3, 4]);
     expect(f.calls).toBe(1);
-    expect(r).toEqual({ points: 5 * QUESTION_POINTS, granted: 5, allRecorded: true, unitsAdded: 2 });
+    expect(r).toEqual({ points: 5 * QUESTION_POINTS, granted: 5, allRecorded: true, unitsAdded: 10 });
   });
 
   it("partial results retry safely without double payment", async () => {
@@ -75,7 +75,7 @@ describe("daily game batch rewards", () => {
     expect(r!.unitsAdded).toBe(0);
     expect(f.tasks.size).toBe(0);
     const r2 = await f.call("word", [4]);
-    expect(r2!.unitsAdded).toBe(2);
+    expect(r2!.unitsAdded).toBe(10);
     const r3 = await f.call("word", [0, 1, 2, 3, 4]);
     expect(r3!.unitsAdded).toBe(0); // units counted once
   });
@@ -83,8 +83,12 @@ describe("daily game batch rewards", () => {
   it("question_complete units require all 5 question rewards", async () => {
     const f = fake();
     expect((await f.call("question", [1, 2, 3, 4]))!.unitsAdded).toBe(0);
-    expect((await f.call("question", [0]))!.unitsAdded).toBe(2);
-    expect([...f.tasks]).toEqual([`game-question-complete-${DAY}`, `game-question-complete-${DAY}#2`]);
+    expect((await f.call("question", [0]))!.unitsAdded).toBe(10);
+    expect([...f.tasks]).toEqual(
+      Array.from({ length: 10 }, (_, i) =>
+        i ? `game-question-complete-${DAY}#${i + 1}` : `game-question-complete-${DAY}`,
+      ),
+    );
   });
 
   it("rejects a 6th question/index and oversize batches", () => {
@@ -96,13 +100,13 @@ describe("daily game batch rewards", () => {
   });
 
   it("server owns fixed amounts and reward keys", async () => {
-    expect(DAILY_GAMES.word.points).toBe(80);
-    expect(DAILY_GAMES.question.points).toBe(100);
+    expect(DAILY_GAMES.word.points).toBe(1000);
+    expect(DAILY_GAMES.question.points).toBe(1000);
     const f = fake();
     await f.call("question", [2]);
-    expect(f.events.get(`question-${DAY}-2`)).toBe(100);
+    expect(f.events.get(`question-${DAY}-2`)).toBe(1000);
     await f.call("word", [2]);
-    expect(f.events.get(`word-${DAY}-2`)).toBe(80);
+    expect(f.events.get(`word-${DAY}-2`)).toBe(1000);
   });
 
   it("existing once-only idempotency is intact (no repeat grant per key)", async () => {

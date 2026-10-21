@@ -16,3 +16,4 @@
 - Vitest uses its own configuration without the app's server-RPC transform; why: handler unit tests must execute verified server logic directly rather than generated transport stubs.
 - Question Day reads daily questions through question-day.functions.ts after Telegram verification using the existing server-only db/utcDay helpers; why: restricted questions stay behind verified server access and use the same UTC day as rewards.
 - Admin game switches (service-role `game_switches` / `get_game_switches`) are read only through game-switches.server.ts (30s cache, fail-open to ON) and every game-paying server path checks them before any write, returning `game_disabled`; why: paused games must never pay out, and a switch outage must not break games.
+- Question Day starts are recorded once per user per UTC day via start_daily_play; why: replaying must never be possible even if the browser is reloaded.

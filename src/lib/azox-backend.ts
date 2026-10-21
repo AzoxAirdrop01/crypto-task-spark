@@ -49,16 +49,45 @@ export function rawInitData(): string | null {
   return getWebApp()?.initData || null;
 }
 
-/** Fresh verified questions for each Question Day opening; no shared cache. */
-export async function fetchDailyQuestions(): Promise<DailyQuestion[] | null> {
-  const initData = rawInitData();
-  if (!initData) return null;
-  try {
-    const result = await getDailyQuestions({ data: { initData } });
-    return result.ok ? result.questions : null;
-  } catch {
-    return null;
-  }
+export type DailyQuestionsFetch =
+  | { status: "ok"; questions: DailyQuestion[] }
+  | { status: "already_played"; nextResetAt: number }
+  | { status: "unavailable" };
+
+/**
+ * Starting Question Day burns the user's one play for the UTC day, so a
+ * successful result is kept per UTC day and concurrent calls share one request
+ * (remounts / StrictMode double effects never burn the attempt).
+ */
+let dailyQuestionsCache: { day: string; result: DailyQuestionsFetch } | null = null;
+let dailyQuestionsInFlight: { day: string; promise: Promise<DailyQuestionsFetch> } | null = null;
+
+export function fetchDailyQuestions(): Promise<DailyQuestionsFetch> {
+  const day = new Date().toISOString().slice(0, 10);
+  if (dailyQuestionsCache?.day === day) return Promise.resolve(dailyQuestionsCache.result);
+  if (dailyQuestionsInFlight?.day === day) return dailyQuestionsInFlight.promise;
+  const promise = (async (): Promise<DailyQuestionsFetch> => {
+    const initData = rawInitData();
+    if (!initData) return { status: "unavailable" };
+    try {
+      const result = await getDailyQuestions({ data: { initData } });
+      if (result.ok) {
+        const ok: DailyQuestionsFetch = { status: "ok", questions: result.questions };
+        dailyQuestionsCache = { day, result: ok };
+        return ok;
+      }
+      if (result.error === "already_played") {
+        return { status: "already_played", nextResetAt: result.nextResetAt };
+      }
+      return { status: "unavailable" };
+    } catch {
+      return { status: "unavailable" };
+    } finally {
+      dailyQuestionsInFlight = null;
+    }
+  })();
+  dailyQuestionsInFlight = { day, promise };
+  return promise;
 }
 
 /** The external project's user tables are not in the generated types. */

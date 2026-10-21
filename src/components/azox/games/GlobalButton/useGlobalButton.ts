@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAzox } from "@/components/azox/app-provider";
 import { haptic } from "@/lib/telegram";
+import { GLOBAL_BUTTON_REWARD } from "@/lib/rewards";
 
 const SLOT_MS = 3 * 60 * 60 * 1000; // every 3 hours (UTC+3 slots align with UTC)
 const ACTIVE_MS = 20 * 1000;
 const MAX_WINNERS = 35000;
-const REWARD = 400;
+const REWARD = GLOBAL_BUTTON_REWARD;
 
 const PRESS_KEY = "globalButton_lastPress";
 const WINNERS_KEY = "globalButton_winners";
