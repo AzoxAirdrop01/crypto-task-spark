@@ -7,7 +7,7 @@ import { formatPoints } from "@/lib/azox-data";
 import { haptic } from "@/lib/telegram";
 import { QUESTION_POINTS } from "@/lib/rewards";
 import { Button } from "@/components/ui/button";
-import { fetchDailyQuestions } from "@/lib/azox-backend";
+import { fetchDailyQuestions, type DailyQuestionsFetch } from "@/lib/azox-backend";
 import type { DailyQuestion as Question } from "@/lib/question-day.functions";
 
 const SECONDS_PER_QUESTION = 60;
@@ -15,7 +15,7 @@ const POINTS_PER_CORRECT = QUESTION_POINTS;
 const LETTERS = ["A", "B", "C", "D", "E"];
 
 export default function QuestionDay() {
-  const [questions, setQuestions] = useState<Question[] | null>(null);
+  const [state, setState] = useState<DailyQuestionsFetch | null>(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
 
@@ -23,7 +23,7 @@ export default function QuestionDay() {
     let cancelled = false;
     void fetchDailyQuestions().then((result) => {
       if (cancelled) return;
-      setQuestions(result);
+      setState(result);
       setLoading(false);
     });
     return () => {
@@ -31,7 +31,7 @@ export default function QuestionDay() {
     };
   }, [attempt]);
 
-  if (questions) return <QuestionDayGame questions={questions} />;
+  if (state?.status === "ok") return <QuestionDayGame questions={state.questions} />;
 
   return (
     <div className="flex min-h-[80dvh] flex-col gap-4">
@@ -45,7 +45,9 @@ export default function QuestionDay() {
         </Link>
         <h1 className="flex-1 text-lg font-black text-primary">AZOX Question Day</h1>
       </header>
-      {loading ? (
+      {!loading && state?.status === "already_played" ? (
+        <AlreadyPlayed nextResetAt={state.nextResetAt} />
+      ) : loading ? (
         <p role="status" className="text-center text-sm text-muted-foreground">
           Loading questions…
         </p>
@@ -64,6 +66,44 @@ export default function QuestionDay() {
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+function AlreadyPlayed({ nextResetAt }: { nextResetAt: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const total = Math.max(0, Math.ceil((nextResetAt - now) / 1000));
+  const hms = [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60]
+    .map((v) => String(v).padStart(2, "0"))
+    .join(":");
+  return (
+    <div
+      className="rounded-3xl border p-6 text-center"
+      style={{ background: "#0d0d0d", borderColor: "#22c55e" }}
+    >
+      <Trophy className="mx-auto size-8" style={{ color: "#FFD700" }} aria-hidden="true" />
+      <p className="mt-3 text-base font-black" style={{ color: "#22c55e" }}>
+        You've completed today's Question Day
+      </p>
+      <p className="mt-2 text-sm text-muted-foreground">New questions at 00:00 UTC</p>
+      <p
+        className="mt-3 font-mono text-2xl font-black tabular-nums"
+        style={{ color: "#22c55e" }}
+        aria-live="polite"
+      >
+        {hms}
+      </p>
+      <Link
+        to="/gaming"
+        className="mt-5 block rounded-xl px-4 py-2.5 text-sm font-black text-black"
+        style={{ background: "#22c55e" }}
+      >
+        Back to Gaming
+      </Link>
     </div>
   );
 }

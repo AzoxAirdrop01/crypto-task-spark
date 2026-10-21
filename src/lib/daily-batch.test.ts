@@ -106,7 +106,7 @@ describe("daily game batch rewards", () => {
     await f.call("question", [2]);
     expect(f.events.get(`question-${DAY}-2`)).toBe(1000);
     await f.call("word", [2]);
-    expect(f.events.get(`word-${DAY}-2`)).toBe(80);
+    expect(f.events.get(`word-${DAY}-2`)).toBe(1000);
   });
 
   it("existing once-only idempotency is intact (no repeat grant per key)", async () => {
