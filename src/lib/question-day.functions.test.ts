@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   verify: vi.fn(),
   rpc: vi.fn(),
+  start: vi.fn(),
+  enabled: vi.fn(),
   utcDay: vi.fn(),
 }));
 
@@ -15,9 +17,12 @@ vi.mock("@tanstack/react-start", () => ({
   }),
 }));
 vi.mock("./telegram-auth.server", () => ({ verifyTelegramInitData: mocks.verify }));
-vi.mock("./game-switches.server", () => ({ isGameEnabled: async () => true }));
+vi.mock("./game-switches.server", () => ({ isGameEnabled: mocks.enabled }));
 vi.mock("./azox-secure.server", () => ({
-  db: () => ({ rpc: mocks.rpc }),
+  db: () => ({
+    rpc: (fn: string, args: unknown) =>
+      fn === "start_daily_play" ? mocks.start(args) : mocks.rpc(fn, args),
+  }),
   utcDay: mocks.utcDay,
 }));
 
@@ -38,6 +43,8 @@ describe("Question Day verified daily reads", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     mocks.verify.mockResolvedValue({ ok: true, user: { id: 42 } });
     mocks.utcDay.mockReturnValue("2026-10-17");
+    mocks.enabled.mockResolvedValue(true);
+    mocks.start.mockResolvedValue({ data: true, error: null });
     mocks.rpc.mockResolvedValue({
       data: { day: "2026-10-17", source_date: "2026-10-16", questions },
       error: null,
@@ -138,5 +145,41 @@ describe("Question Day verified daily reads", () => {
     expect(() => getDailyQuestions({ data: { initData } })).toThrow();
     expect(mocks.verify).not.toHaveBeenCalled();
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("first call serves questions and records the start with the verified id and UTC day", async () => {
+    const result = await getDailyQuestions(input);
+    expect(result.ok).toBe(true);
+    expect(mocks.start).toHaveBeenCalledExactlyOnceWith({
+      p_telegram_id: 42,
+      p_game: "question",
+      p_day: "2026-10-17",
+    });
+  });
+
+  it("second call the same day returns already_played with next UTC midnight and no questions", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-17T15:30:00Z"));
+    mocks.start.mockResolvedValue({ data: false, error: null });
+    const result = await getDailyQuestions(input);
+    vi.useRealTimers();
+    expect(result).toEqual({
+      ok: false,
+      error: "already_played",
+      nextResetAt: Date.UTC(2026, 9, 18),
+    });
+    expect("questions" in result).toBe(false);
+  });
+
+  it("start RPC error fails closed with unavailable and no questions", async () => {
+    mocks.start.mockResolvedValue({ data: null, error: { message: "boom" } });
+    expect(await getDailyQuestions(input)).toEqual({ ok: false, error: "unavailable" });
+  });
+
+  it("paused game stays unavailable and never records a start", async () => {
+    mocks.enabled.mockResolvedValue(false);
+    expect(await getDailyQuestions(input)).toEqual({ ok: false, error: "unavailable" });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.start).not.toHaveBeenCalled();
   });
 });
