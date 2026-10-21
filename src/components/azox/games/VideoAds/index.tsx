@@ -29,7 +29,7 @@ export default function AzoxWord() {
     if (g.phase !== "complete" || wordTaskFiredRef.current) return;
     wordTaskFiredRef.current = true;
     const earned = onWordComplete(g.correctCount === WORDS_PER_DAY);
-    if (earned > 0) toast.success("+2 Tasks earned! 🔤");
+    if (earned > 0) toast.success(`+${earned} Tasks earned! 🔤`);
   }, [g.phase, g.correctCount, onWordComplete]);
 
   return (

@@ -19,7 +19,11 @@ import {
   getReferredUsers,
 } from "@/lib/profile.functions";
 import { PUBLIC_USER_COLUMNS, publicRowToDbUser, type PublicUserRow } from "@/lib/public-user";
-import { getDailyQuestions, type DailyQuestion } from "@/lib/question-day.functions";
+import {
+  getDailyQuestions,
+  nextUtcMidnight,
+  type DailyQuestion,
+} from "@/lib/question-day.functions";
 import { getGameSwitches } from "@/lib/game-switches.functions";
 import { GAME_DISABLED, allGamesOn, type GameSwitches } from "@/lib/game-switches";
 
@@ -62,8 +66,20 @@ export type DailyQuestionsFetch =
 let dailyQuestionsCache: { day: string; result: DailyQuestionsFetch } | null = null;
 let dailyQuestionsInFlight: { day: string; promise: Promise<DailyQuestionsFetch> } | null = null;
 
+function currentUtcDay(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Consume today's questions once play starts, so re-entering cannot replay them. */
+export function markDailyQuestionsPlayed(): void {
+  dailyQuestionsCache = {
+    day: currentUtcDay(),
+    result: { status: "already_played", nextResetAt: nextUtcMidnight() },
+  };
+}
+
 export function fetchDailyQuestions(): Promise<DailyQuestionsFetch> {
-  const day = new Date().toISOString().slice(0, 10);
+  const day = currentUtcDay();
   if (dailyQuestionsCache?.day === day) return Promise.resolve(dailyQuestionsCache.result);
   if (dailyQuestionsInFlight?.day === day) return dailyQuestionsInFlight.promise;
   const promise = (async (): Promise<DailyQuestionsFetch> => {
