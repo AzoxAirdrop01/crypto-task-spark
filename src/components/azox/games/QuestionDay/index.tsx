@@ -7,7 +7,11 @@ import { formatPoints } from "@/lib/azox-data";
 import { haptic } from "@/lib/telegram";
 import { QUESTION_POINTS } from "@/lib/rewards";
 import { Button } from "@/components/ui/button";
-import { fetchDailyQuestions, type DailyQuestionsFetch } from "@/lib/azox-backend";
+import {
+  fetchDailyQuestions,
+  markDailyQuestionsPlayed,
+  type DailyQuestionsFetch,
+} from "@/lib/azox-backend";
 import type { DailyQuestion as Question } from "@/lib/question-day.functions";
 
 const SECONDS_PER_QUESTION = 60;
@@ -118,6 +122,13 @@ function QuestionDayGame({ questions }: { questions: Question[] }) {
   const [done, setDone] = useState(false);
   const completedRef = useRef(false);
   const correctIdxRef = useRef<number[]>([]);
+  const startedRef = useRef(false);
+  // First answer (or first timeout) consumes today's play; not on mount.
+  const markStarted = useCallback(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    markDailyQuestionsPlayed();
+  }, []);
 
   const current = questions[index] ?? questions[0];
 
@@ -138,6 +149,7 @@ function QuestionDayGame({ questions }: { questions: Question[] }) {
     const t = setInterval(() => {
       setTimeLeft((s) => {
         if (s <= 1) {
+          markStarted();
           setPicked(-1);
           return 0;
         }
@@ -145,7 +157,7 @@ function QuestionDayGame({ questions }: { questions: Question[] }) {
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [done, picked]);
+  }, [done, picked, markStarted]);
 
   useEffect(() => {
     if (picked === null || done) return;
@@ -167,6 +179,7 @@ function QuestionDayGame({ questions }: { questions: Question[] }) {
 
   const answer = (i: number) => {
     if (picked !== null || done) return;
+    markStarted();
     setPicked(i);
     haptic();
     if (i === current.correct) {

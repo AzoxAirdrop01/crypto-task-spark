@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { externalSupabase as supabase } from "@/integrations/external-supabase/client";
 import { readStorage, writeStorage } from "@/lib/points";
 import { recordTaskUnits, submitGameScoreRemote } from "@/lib/azox-backend";
-import type { ScoreGame } from "@/lib/rewards";
+import { TASK_UNITS, type ScoreGame } from "@/lib/rewards";
 
 const STREAK_KEY = "azox_daily_streak";
 
@@ -19,10 +19,10 @@ function today() {
  * source of truth for the task count shown in Profile and Task Rank.
  */
 export function useGameTasks() {
-  // AZOX Word — +2 Tasks when ALL 5 words answered correctly (once per day)
+  // AZOX Word — +TASK_UNITS.word_complete (10) Tasks when ALL 5 words answered correctly (once per day)
   const onWordComplete = useCallback((allCorrect: boolean) => {
     // Units are granted server-side by completeDailyGame (all 5 recorded).
-    return allCorrect ? 2 : 0;
+    return allCorrect ? TASK_UNITS.word_complete : 0;
   }, []);
 
   // AZOX Box — +1 Task when box opened successfully (once per box/day)
@@ -31,10 +31,10 @@ export function useGameTasks() {
     return 1;
   }, []);
 
-  // Question Day — +2 Tasks when ALL questions answered correctly (once per day)
+  // Question Day — +TASK_UNITS.question_complete (10) Tasks when ALL questions answered correctly (once per day)
   const onQuestionComplete = useCallback((allCorrect: boolean) => {
     // Units are granted server-side by completeDailyGame (all 5 recorded).
-    return allCorrect ? 2 : 0;
+    return allCorrect ? TASK_UNITS.question_complete : 0;
   }, []);
 
   // Global Button — +1 Task each time successfully pressed
