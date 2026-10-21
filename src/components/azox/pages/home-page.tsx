@@ -1,3 +1,4 @@
+import { WORD_POINTS } from "@/lib/rewards";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Play, Timer, Coins } from "lucide-react";
@@ -69,7 +70,7 @@ export function HomePage() {
           <p className="text-sm font-semibold">Azox Word</p>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <Coins className="size-3.5 text-gold" aria-hidden="true" /> Unscramble
-            5 daily words • +80 each
+            5 daily words • +{WORD_POINTS.toLocaleString()} each
           </p>
         </div>
         <Button

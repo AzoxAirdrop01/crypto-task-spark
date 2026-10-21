@@ -6,6 +6,7 @@ import { useAzox } from "@/components/azox/app-provider";
 import { AZOX_IMAGES, type AzoxImageKey } from "@/lib/azox-images";
 import { GAMES, formatPoints } from "@/lib/azox-data";
 import { haptic } from "@/lib/telegram";
+import { QUESTION_POINTS } from "@/lib/rewards";
 
 export const GAME_IDS = [
   "clicker",
@@ -248,11 +249,11 @@ function QuestionDayGame() {
   const choose = (i: number) => {
     if (picked !== null) return;
     setPicked(i);
-    if (i === question.answer) addPoints(100, { type: "none" });
+    if (i === question.answer) addPoints(QUESTION_POINTS, { type: "none" });
   };
 
   return (
-    <GameShell game="question-day" subtitle="Answer correctly to earn +100">
+    <GameShell game="question-day" subtitle={`Answer correctly to earn +${QUESTION_POINTS}`}>
       <section className="glass flex flex-col gap-3 rounded-2xl p-5">
         <p className="text-sm font-semibold">{question.q}</p>
         {question.options.map((o, i) => {

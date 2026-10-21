@@ -1,5 +1,5 @@
 // Pure data: every reward value the server is allowed to pay.
-// Values are copied from the existing game/task constants — do not change.
+// Server-authoritative values; change them only together with the UI copies that import them.
 // Safe to import from both server and browser code (no images, no window).
 import { SOCIAL_TASKS } from "./social-tasks";
 import { BOX_REWARD, BOXES_PER_DAY } from "./azox-box-schedule";
@@ -12,17 +12,17 @@ export const SOCIAL_TASK_POINTS: Record<string, number> = Object.fromEntries(
 
 export const DAILY_GIFT_POINTS = 200;
 
-export const GLOBAL_BUTTON_REWARD = 400;
+export const GLOBAL_BUTTON_REWARD = 5000;
 export const GLOBAL_BUTTON_SLOT_MS = 3 * 60 * 60 * 1000;
 export const GLOBAL_BUTTON_ACTIVE_MS = 20 * 1000;
 export const GLOBAL_BUTTON_MAX_WINNERS = 35000;
 
 export { BOX_REWARD, BOXES_PER_DAY };
 
-export const WORD_POINTS = 80;
+export const WORD_POINTS = 1000;
 export const WORDS_PER_DAY = 5;
 
-export const QUESTION_POINTS = 100;
+export const QUESTION_POINTS = 1000;
 /** Number of questions in the QuestionDay set (all must be answered correctly). */
 export const QUESTIONS_PER_DAY = 5;
 
@@ -43,9 +43,9 @@ export const MAX_GAME_SCORE = 100_000;
 
 /** Task units awarded for game achievements (unchanged values). */
 export const TASK_UNITS = {
-  word_complete: 2,
+  word_complete: 10,
   box_open: 1,
-  question_complete: 2,
+  question_complete: 10,
   daily_streak: 3,
   world_record: 10,
   global_button: 1,

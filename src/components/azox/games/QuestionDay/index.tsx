@@ -5,12 +5,13 @@ import { useAzox } from "@/components/azox/app-provider";
 import { useGameTasks } from "@/hooks/useGameTasks";
 import { formatPoints } from "@/lib/azox-data";
 import { haptic } from "@/lib/telegram";
+import { QUESTION_POINTS } from "@/lib/rewards";
 import { Button } from "@/components/ui/button";
 import { fetchDailyQuestions } from "@/lib/azox-backend";
 import type { DailyQuestion as Question } from "@/lib/question-day.functions";
 
 const SECONDS_PER_QUESTION = 60;
-const POINTS_PER_CORRECT = 100;
+const POINTS_PER_CORRECT = QUESTION_POINTS;
 const LETTERS = ["A", "B", "C", "D", "E"];
 
 export default function QuestionDay() {
