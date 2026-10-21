@@ -10,11 +10,11 @@ export type Rank = {
 
 export const RANKS: Rank[] = [
   { key: "Bronze", threshold: 0, pointsPerFinger: 1, color: "#b87333" },
-  { key: "Silver", threshold: 50_000, pointsPerFinger: 2, color: "#c0c7d0" },
-  { key: "Gold", threshold: 150_000, pointsPerFinger: 3, color: "#f5c542" },
-  { key: "Platinum", threshold: 500_000, pointsPerFinger: 4, color: "#7fd1e0" },
-  { key: "Diamond", threshold: 1_500_000, pointsPerFinger: 5, color: "#67e8f9" },
-  { key: "Epic", threshold: 5_000_000, pointsPerFinger: 6, color: "#7c3aed" },
+  { key: "Silver", threshold: 250_000, pointsPerFinger: 2, color: "#c0c7d0" },
+  { key: "Gold", threshold: 700_000, pointsPerFinger: 3, color: "#f5c542" },
+  { key: "Platinum", threshold: 1_300_000, pointsPerFinger: 4, color: "#7fd1e0" },
+  { key: "Diamond", threshold: 2_500_000, pointsPerFinger: 5, color: "#67e8f9" },
+  { key: "Epic", threshold: 7_000_000, pointsPerFinger: 6, color: "#7c3aed" },
   {
     key: "Legendary",
     threshold: 25_000_000,
