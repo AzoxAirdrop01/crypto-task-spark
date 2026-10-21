@@ -84,7 +84,11 @@ describe("daily game batch rewards", () => {
     const f = fake();
     expect((await f.call("question", [1, 2, 3, 4]))!.unitsAdded).toBe(0);
     expect((await f.call("question", [0]))!.unitsAdded).toBe(10);
-    expect([...f.tasks]).toEqual([`game-question-complete-${DAY}`, `game-question-complete-${DAY}#2`]);
+    expect([...f.tasks]).toEqual(
+      Array.from({ length: 10 }, (_, i) =>
+        i ? `game-question-complete-${DAY}#${i + 1}` : `game-question-complete-${DAY}`,
+      ),
+    );
   });
 
   it("rejects a 6th question/index and oversize batches", () => {
@@ -100,7 +104,7 @@ describe("daily game batch rewards", () => {
     expect(DAILY_GAMES.question.points).toBe(1000);
     const f = fake();
     await f.call("question", [2]);
-    expect(f.events.get(`question-${DAY}-2`)).toBe(100);
+    expect(f.events.get(`question-${DAY}-2`)).toBe(1000);
     await f.call("word", [2]);
     expect(f.events.get(`word-${DAY}-2`)).toBe(80);
   });
