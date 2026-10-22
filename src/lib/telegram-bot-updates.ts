@@ -29,7 +29,7 @@ function userId(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
 
-const openApp = { reply_markup: { inline_keyboard: [[{ text: "Open AZOX", url: MINI_APP_URL }]] };
+const openApp = { reply_markup: { inline_keyboard: [[{ text: "Open AZOX", url: MINI_APP_URL }]] } };
 const removeKeyboard = { reply_markup: { remove_keyboard: true } };
 const inactive = "Friend invites are not active right now.";
 
