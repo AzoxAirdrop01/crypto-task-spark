@@ -26,6 +26,8 @@ import {
 } from "@/lib/question-day.functions";
 import { getGameSwitches } from "@/lib/game-switches.functions";
 import { GAME_DISABLED, allGamesOn, type GameSwitches } from "@/lib/game-switches";
+import { getGamingFace } from "@/lib/gaming-face.functions";
+import type { GamingFace } from "@/lib/gaming-face";
 
 /** Browser event fired when the server refuses a game call because it is paused. */
 export const GAME_DISABLED_EVENT = "azox:game-disabled";
@@ -45,6 +47,18 @@ export async function fetchGameSwitches(): Promise<GameSwitches> {
     return res.ok ? res.switches : allGamesOn();
   } catch {
     return allGamesOn();
+  }
+}
+
+/** Admin Gaming face; Face 1 on missing identity or any failure. */
+export async function fetchGamingFace(): Promise<GamingFace> {
+  const initData = rawInitData();
+  if (!initData) return 1;
+  try {
+    const res = await getGamingFace({ data: { initData } });
+    return res.ok ? res.face : 1;
+  } catch {
+    return 1;
   }
 }
 
@@ -376,10 +390,11 @@ export type ReferredUser = {
   photo_url: string | null;
   points: number;
   joined_at: string | null;
+  points_given: number;
 };
 
 /**
- * No-op: referral attribution (+1000 to the referrer) happens inside the
+ * No-op: referral attribution (with DB-decided amounts) happens inside the
  * server-side upsert_user call when the user row is first created.
  */
 export async function registerReferral(_code: string | null): Promise<boolean> {

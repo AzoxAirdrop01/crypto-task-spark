@@ -98,8 +98,7 @@ export function ReferralsPage() {
           <Users className="size-8 text-accent" aria-hidden="true" />
           <p className="text-sm font-semibold">You haven't invited anyone yet.</p>
           <p className="text-xs text-muted-foreground">
-            Share your referral link and earn +1000 points for every successful
-            referral.
+            Share your referral link and earn points for every successful referral.
           </p>
           <Button
             onClick={copy}
@@ -141,7 +140,7 @@ export function ReferralsPage() {
                     Joined {joinDate(row.joined_at)}
                   </p>
                 </div>
-                <span className="text-sm font-bold text-gold">+1000</span>
+                <span className="text-sm font-bold text-gold">+{formatPoints(row.points_given)}</span>
               </li>
             );
           })}
@@ -170,7 +169,7 @@ export function ReferralsPage() {
           <p className="mt-2 text-[11px] text-muted-foreground">
             Total earned from referrals:{" "}
             <span className="text-gold">
-              {formatPoints(rows.length * 1000)}
+              {formatPoints(rows.reduce((total, row) => total + row.points_given, 0))}
             </span>
           </p>
         </section>

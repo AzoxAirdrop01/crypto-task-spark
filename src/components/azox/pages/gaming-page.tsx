@@ -5,10 +5,18 @@ import { toSwitchId } from "@/lib/game-switches";
 import { ChevronRight } from "lucide-react";
 import { GAMES } from "@/lib/azox-data";
 import { AzoxFooter } from "@/components/azox/footer";
+import { ReferralFace } from "./referral-face";
 
 export function GamingPage() {
-  const { isGameEnabled, refreshGameSwitches } = useAzox();
-  useEffect(() => refreshGameSwitches(), [refreshGameSwitches]);
+  const { isGameEnabled, refreshGameSwitches, gamingFace, refreshGamingFace } = useAzox();
+  useEffect(() => {
+    refreshGameSwitches();
+    refreshGamingFace();
+  }, [refreshGameSwitches, refreshGamingFace]);
+  if (gamingFace === null) {
+    return <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (gamingFace === 2) return <ReferralFace />;
   return (
     <div className="flex flex-col gap-5">
       <div>
