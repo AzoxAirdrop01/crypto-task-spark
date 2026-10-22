@@ -112,7 +112,7 @@ export async function readReferredUsers(
       ok: true,
       users: ((data as Row[] | null) ?? []).map((row) => ({
         ...row,
-        points_given: pointsByUser.get(String(row.telegram_id)) ?? 1000,
+        points_given: pointsByUser.get(String(row["telegram_id"])) ?? 1000,
       })),
     };
   } catch {
