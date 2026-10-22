@@ -1,0 +1,9 @@
+-- Applied via Supabase migration "story_task_rewards" on 2026-10-22. Record only.
+-- story_task_settings: singleton id=1; view/like/comment each have *_enabled boolean default false
+-- and *_units int default 1 check 1..200; service-role only.
+-- story_task_grants: PK (telegram_id, story_id, kind), FK to stories on delete cascade; service-role only.
+-- RPCs: get_story_task_settings(), set_story_task(p_kind, p_enabled, p_units, p_admin).
+-- set_story_task: nulls keep the current value.
+-- grant_story_task(p_telegram_id, p_story_id, p_kind): when the kind is ON, records the grant once
+-- and inserts units rows into user_tasks with ids story-<kind>-<storyId> and story-<kind>-<storyId>#2..#N,
+-- then recomputes users.tasks_done. Changing the units later never adds tasks retroactively.
