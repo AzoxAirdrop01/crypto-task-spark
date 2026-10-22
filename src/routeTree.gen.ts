@@ -21,6 +21,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as GamesGameRouteImport } from './routes/games.$game'
 import { Route as ApiPublicTapFlushRouteImport } from './routes/api/public/tap-flush'
 import { Route as ApiPublicInstagramWebhookRouteImport } from './routes/api/public/instagram/webhook'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -83,6 +84,12 @@ const ApiPublicInstagramWebhookRoute =
     path: '/api/public/instagram/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram/webhook',
+    path: '/api/public/telegram/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/games/$game': typeof GamesGameRoute
   '/api/public/tap-flush': typeof ApiPublicTapFlushRoute
   '/api/public/instagram/webhook': typeof ApiPublicInstagramWebhookRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,6 +119,7 @@ export interface FileRoutesByTo {
   '/games/$game': typeof GamesGameRoute
   '/api/public/tap-flush': typeof ApiPublicTapFlushRoute
   '/api/public/instagram/webhook': typeof ApiPublicInstagramWebhookRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -126,6 +135,7 @@ export interface FileRoutesById {
   '/games/$game': typeof GamesGameRoute
   '/api/public/tap-flush': typeof ApiPublicTapFlushRoute
   '/api/public/instagram/webhook': typeof ApiPublicInstagramWebhookRoute
+  '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/games/$game'
     | '/api/public/tap-flush'
     | '/api/public/instagram/webhook'
+    | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/games/$game'
     | '/api/public/tap-flush'
     | '/api/public/instagram/webhook'
+    | '/api/public/telegram/webhook'
   id:
     | '__root__'
     | '/'
@@ -170,6 +182,7 @@ export interface FileRouteTypes {
     | '/games/$game'
     | '/api/public/tap-flush'
     | '/api/public/instagram/webhook'
+    | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -185,6 +198,7 @@ export interface RootRouteChildren {
   GamesGameRoute: typeof GamesGameRoute
   ApiPublicTapFlushRoute: typeof ApiPublicTapFlushRoute
   ApiPublicInstagramWebhookRoute: typeof ApiPublicInstagramWebhookRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -273,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicInstagramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/telegram/webhook': {
+      id: '/api/public/telegram/webhook'
+      path: '/api/public/telegram/webhook'
+      fullPath: '/api/public/telegram/webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -289,6 +310,7 @@ const rootRouteChildren: RootRouteChildren = {
   GamesGameRoute: GamesGameRoute,
   ApiPublicTapFlushRoute: ApiPublicTapFlushRoute,
   ApiPublicInstagramWebhookRoute: ApiPublicInstagramWebhookRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -18,3 +18,4 @@
 - Admin game switches (service-role `game_switches` / `get_game_switches`) are read only through game-switches.server.ts (30s cache, fail-open to ON) and every game-paying server path checks them before any write, returning `game_disabled`; why: paused games must never pay out, and a switch outage must not break games.
 - Question Day starts are recorded once per user per UTC day via start_daily_play; why: replaying must never be possible even if the browser is reloaded.
 - The active Gaming face is read only through gaming-face.server.ts (30s cache, fail-open to Face 1); why: a face-switch outage must never hide the games.
+- Referral amounts and the friend-pick bonus are decided only in the DB function apply_referral_reward (face-aware); the app never computes or grants them; why: a client or webhook must not be able to mint referral rewards.
