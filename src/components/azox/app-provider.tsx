@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { fetchGameSwitches } from "@/lib/azox-backend";
+import { fetchGameSwitches, fetchGamingFace } from "@/lib/azox-backend";
+import type { GamingFace } from "@/lib/gaming-face";
 import { allGamesOn, toSwitchId, type GameId, type GameSwitches } from "@/lib/game-switches";
 import type { RewardClaim } from "@/lib/rewards";
 import { usePoints } from "@/hooks/usePoints";
@@ -30,6 +31,11 @@ export function AzoxProvider({ children }: { children: ReactNode }) {
     void fetchGameSwitches().then(setGameSwitches);
   }, []);
   useEffect(() => refreshGameSwitches(), [refreshGameSwitches]);
+  const [gamingFace, setGamingFace] = useState<GamingFace | null>(null);
+  const refreshGamingFace = useCallback(() => {
+    void fetchGamingFace().then(setGamingFace);
+  }, []);
+  useEffect(() => refreshGamingFace(), [refreshGamingFace]);
   const isGameEnabled = useCallback((id: GameId) => gameSwitches[id] !== false, [gameSwitches]);
 
   // Never add points for a game known to be paused.
@@ -79,6 +85,8 @@ export function AzoxProvider({ children }: { children: ReactNode }) {
       gameSwitches,
       isGameEnabled,
       refreshGameSwitches,
+      gamingFace,
+      refreshGamingFace,
     }),
     [
       user,
@@ -99,6 +107,8 @@ export function AzoxProvider({ children }: { children: ReactNode }) {
       gameSwitches,
       isGameEnabled,
       refreshGameSwitches,
+      gamingFace,
+      refreshGamingFace,
     ],
   );
 

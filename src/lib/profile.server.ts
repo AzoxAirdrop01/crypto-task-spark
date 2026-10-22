@@ -99,7 +99,22 @@ export async function readReferredUsers(
       .eq("referred_by", id)
       .order("joined_at", { ascending: false });
     if (error) return failure("server_error");
-    return { ok: true, users: (data as Row[] | null) ?? [] };
+    const { data: rewards, error: rewardsError } = await getExternalSupabaseAdmin()
+      .from("referrals")
+      .select("referred_id, points_given")
+      .eq("referrer_id", id);
+    if (rewardsError) return failure("server_error");
+    const pointsByUser = new Map(
+      ((rewards as { referred_id: number; points_given: number | null }[] | null) ?? [])
+        .map((row) => [String(row.referred_id), row.points_given ?? 1000]),
+    );
+    return {
+      ok: true,
+      users: ((data as Row[] | null) ?? []).map((row) => ({
+        ...row,
+        points_given: pointsByUser.get(String(row.telegram_id)) ?? 1000,
+      })),
+    };
   } catch {
     return failure("server_error");
   }

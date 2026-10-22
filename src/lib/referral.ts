@@ -2,13 +2,14 @@
  * Pure referral attribution logic (no IO). The server wires real database
  * calls into `runReferralSync`; tests wire an in-memory fake.
  *
- * The one-time reward itself (+1000, referrals row, referred_by,
- * referral_count) stays inside the existing upsert_user database function,
- * which only applies it when the user row is first created. This layer makes
+ * The one-time reward amounts live in the DB's apply_referral_reward function;
+ * attribution (referrals row, referred_by, referral_count) stays inside the
+ * existing upsert_user flow for newly created users. This layer makes
  * sure upsert_user only ever receives a code that is valid, not the user's
  * own, and only for a brand-new user.
  */
 
+/** @deprecated Legacy test-fixture amount only; live amounts are decided in the DB. */
 export const REFERRAL_REWARD = 1000;
 
 /** Telegram start_param allows A-Z a-z 0-9 _ - and up to 512 chars. */
