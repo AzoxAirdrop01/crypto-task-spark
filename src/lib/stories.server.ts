@@ -68,6 +68,27 @@ export function isStoryAdmin(id: number): boolean {
   return id === STORY_ADMIN_ID;
 }
 const failure = (error: StoryFailure["error"]): StoryFailure => ({ ok: false, error });
+async function grantStoryTask(
+  userId: number,
+  storyId: string,
+  kind: "view" | "like" | "comment",
+): Promise<number> {
+  try {
+    const { data, error } = await getExternalSupabaseAdmin().rpc("grant_story_task", {
+      p_telegram_id: userId,
+      p_story_id: storyId,
+      p_kind: kind,
+    });
+    if (error) {
+      console.error("Story task grant failed");
+      return 0;
+    }
+    return typeof data === "number" && Number.isInteger(data) && data >= 0 ? data : 0;
+  } catch {
+    console.error("Story task grant failed");
+    return 0;
+  }
+}
 function check<T>(result: { data: T; error: unknown }): T {
   if (result.error) throw new Error("Story database request failed");
   return result.data;
@@ -200,7 +221,7 @@ export async function readStories(input: unknown): Promise<StoriesResult> {
     return { stories: [], isAdmin: false, engagement: false, error: "server_error" };
   }
 }
-export async function viewStory(input: unknown): Promise<{ ok: true } | StoryFailure> {
+export async function viewStory(input: unknown): Promise<{ ok: true; tasks: number } | StoryFailure> {
   const p = storyActionSchema.safeParse(input);
   if (!p.success) return failure("invalid");
   const a = await verifyTelegramInitData(p.data.initData);
@@ -216,14 +237,15 @@ export async function viewStory(input: unknown): Promise<{ ok: true } | StoryFai
             { onConflict: "story_id,telegram_id", ignoreDuplicates: true },
           ),
       );
-    return { ok: true };
+    const tasks = isStoryAdmin(a.user.id) ? 0 : await grantStoryTask(a.user.id, p.data.storyId, "view");
+    return { ok: true, tasks };
   } catch {
     return failure("server_error");
   }
 }
 export async function likeStory(
   input: unknown,
-): Promise<{ ok: true; liked: boolean } | StoryFailure> {
+): Promise<{ ok: true; liked: boolean; tasks: number } | StoryFailure> {
   const p = storyActionSchema.safeParse(input);
   if (!p.success) return failure("invalid");
   const a = await verifyTelegramInitData(p.data.initData);
@@ -256,12 +278,14 @@ export async function likeStory(
             { onConflict: "story_id,telegram_id", ignoreDuplicates: true },
           ),
       );
-    return { ok: true, liked: !existing };
+    const liked = !existing;
+    const tasks = liked ? await grantStoryTask(a.user.id, p.data.storyId, "like") : 0;
+    return { ok: true, liked, tasks };
   } catch {
     return failure("server_error");
   }
 }
-export async function commentStory(input: unknown): Promise<{ ok: true } | StoryFailure> {
+export async function commentStory(input: unknown): Promise<{ ok: true; tasks: number } | StoryFailure> {
   const p = storyCommentSchema.safeParse(input);
   if (!p.success) return failure("invalid");
   const a = await verifyTelegramInitData(p.data.initData);
@@ -281,7 +305,8 @@ export async function commentStory(input: unknown): Promise<{ ok: true } | Story
         .from("story_comments")
         .insert({ story_id: p.data.storyId, telegram_id: a.user.id, body: p.data.body }),
     );
-    return { ok: true };
+    const tasks = await grantStoryTask(a.user.id, p.data.storyId, "comment");
+    return { ok: true, tasks };
   } catch {
     return failure("server_error");
   }

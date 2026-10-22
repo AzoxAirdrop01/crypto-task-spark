@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   ChevronLeft,
@@ -16,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { rawInitData } from "@/lib/azox-backend";
+import { rawInitData, syncTasksDone } from "@/lib/azox-backend";
 import { getWebApp } from "@/lib/telegram";
 import {
   addStoryComment,
@@ -37,6 +38,11 @@ type Props = {
   onSeen: (id: string) => void;
   onLiked: (id: string, liked: boolean) => void;
 };
+function showTaskReward(tasks: number) {
+  if (tasks <= 0) return;
+  toast.success(`+${tasks} ${tasks === 1 ? "task" : "tasks"}`);
+  void syncTasksDone().catch(() => {});
+}
 export function StoryViewer({ stories, engagement, isAdmin, onClose, onSeen, onLiked }: Props) {
   const [id, setId] = useState(stories.find((s) => !s.seen)?.id ?? stories[0]?.id);
   const index = stories.findIndex((s) => s.id === id);
@@ -102,7 +108,10 @@ export function StoryViewer({ stories, engagement, isAdmin, onClose, onSeen, onL
     if (!initData) return;
     void viewFn({ data: { initData, storyId: story.id } })
       .then((r) => {
-        if (r.ok) onSeen(story.id);
+        if (r.ok) {
+          onSeen(story.id);
+          showTaskReward(r.tasks);
+        }
       })
       .catch(() => {});
   }, [story, ready, engagement, isAdmin, onSeen, viewFn]);
@@ -174,6 +183,7 @@ export function StoryViewer({ stories, engagement, isAdmin, onClose, onSeen, onL
     try {
       const r = await likeFn({ data: { initData, storyId: target.id } });
       onLiked(target.id, r.ok ? r.liked : target.liked);
+      if (r.ok) showTaskReward(r.tasks);
       if (!r.ok) setNotice("Could not save like");
     } catch {
       onLiked(target.id, target.liked);
@@ -191,6 +201,7 @@ export function StoryViewer({ stories, engagement, isAdmin, onClose, onSeen, onL
     try {
       const r = await commentFn({ data: { initData, storyId: story.id, body: body.trim() } });
       if (r.ok) {
+        showTaskReward(r.tasks);
         setBody("");
         setNotice("Sent");
       } else setNotice(r.error === "too_many" ? "Comment limit reached" : "Could not send comment");
