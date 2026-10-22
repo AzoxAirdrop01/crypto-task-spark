@@ -21,7 +21,8 @@ create table if not exists public.referral_friend_picks (
 alter table public.referral_friend_picks enable row level security;
 revoke all on public.referral_friend_picks from anon, authenticated;
 grant all on public.referral_friend_picks to service_role;
--- record_friend_pick(p_referrer, p_friend) returns text: ok | self | no_referrer | already_registered | limit (max 100 picks per referrer)
+-- record_friend_pick(p_referrer, p_friend) returns text: ok | self | no_referrer | already_registered | limit (max 1000 picks per referrer)
+--   The 100-pick limit was raised to 1000 in Supabase by a separate applied migration "friend_pick_limit_1000"; record_friend_pick now allows up to 1000 saved friends per referrer.
 alter table public.referrals
   add column if not exists contact_verified boolean not null default false,
   add column if not exists invitee_points integer not null default 0;
