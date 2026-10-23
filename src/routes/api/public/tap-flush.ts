@@ -28,6 +28,9 @@ export const Route = createFileRoute("/api/public/tap-flush")({
           const { verifyTelegramInitData } = await import("@/lib/telegram-auth.server");
           const auth = await verifyTelegramInitData(parsed.data.initData);
           if (!auth.ok) return json({ ok: false, error: auth.error }, 401);
+          const { isGameEnabled } = await import("@/lib/game-switches.server");
+          if (!(await isGameEnabled("main-tap")))
+            return json({ ok: false, error: "game_disabled" });
           const { claimTapBatch } = await import("@/lib/azox-secure.server");
           const { mapClaimStatus } = await import("@/lib/claim-status");
           const m = mapClaimStatus(
