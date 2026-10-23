@@ -63,8 +63,14 @@ async function helpers() {
   return import("./azox-secure.server");
 }
 
-/** Admin game switch gate; fail-open when the switch cannot be read. */
+/** Face 2 locks games, not Main Tap; failed face reads use the normal switch gate. */
 async function gameOff(game: string): Promise<boolean> {
+  try {
+    const { getGamingFaceCached } = await import("./gaming-face.server");
+    if ((await getGamingFaceCached()) === 2 && game !== "main-tap") return true;
+  } catch {
+    // Fail-open to Face 1: still respect the individual game switch below.
+  }
   const { toSwitchId } = await import("./game-switches");
   const id = toSwitchId(game);
   if (!id) return false;
