@@ -23,3 +23,5 @@
 - Bot never DMs picked friends; it sends the referrer one forwardable invite card; why: bots cannot message users who have not started them.
 - Story task rewards are granted only by the DB function grant_story_task, once per (user, story, kind), after the engagement was verified server-side; why: repeated comments or like toggling must never pay twice.
 - Main Tap is the admin game switch id main-tap; tap_batch claims are refused with game_disabled while it is OFF and the client stops accepting taps; why: a paused Main Tap must never pay out.
+- User geo (country/region/city/lat/lon/zones) is captured server-side only from verified users via upsert_user_geo; raw IPs are never copied into it; why: targeting needs coarse location, not identity.
+- Story geo targeting is enforced server-side and fails closed for targeted stories; why: a geo-restricted promo must not leak when the check fails.

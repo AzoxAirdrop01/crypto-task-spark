@@ -208,3 +208,68 @@ describe("Stories validation and privacy", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 });
+describe("Story geo targeting", () => {
+  const other = "11111111-2222-4333-8444-555555555555";
+  const base = { media_type: "image", media_url: "https://e.com/a.jpg", link_url: null, created_at: "c", expires_at: "e", is_private: false, media_path: null };
+  const rows = [{ ...base, id: storyId, geo_rule: { zones: ["k1"] } }, { ...base, id: other, geo_rule: null }];
+  beforeEach(() => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", token);
+    mocks.db.mockReset();
+  });
+  function setup(rpcResult: unknown) {
+    const from = vi.fn(() => table({ data: rows, error: null }));
+    const rpc = typeof rpcResult === "function" ? vi.fn(rpcResult as () => unknown) : vi.fn(async () => rpcResult);
+    mocks.db.mockReturnValue({ from, rpc, storage: { from: vi.fn() } });
+    return rpc;
+  }
+  const ids = (r: Awaited<ReturnType<typeof readStories>>) => r.stories.map((s) => s.id);
+  it("hides a targeted story from a user outside the rule", async () => {
+    const rpc = setup({ data: [], error: null });
+    const r = await readStories({ initData: signed(42) });
+    expect(ids(r)).toEqual([other]);
+    expect(rpc).toHaveBeenCalledWith("story_ids_geo_allowed", { p_telegram_id: 42, p_story_ids: [storyId] });
+    expect(JSON.stringify(r)).not.toContain("geo_rule");
+  });
+  it("shows it to a user inside the rule", async () => {
+    setup({ data: [storyId], error: null });
+    expect(ids(await readStories({ initData: signed(42) }))).toEqual([storyId, other]);
+  });
+  it("shows it to the admin without asking", async () => {
+    const rpc = setup({ data: [], error: null });
+    const r = await readStories({ initData: signed(2143639881) });
+    expect(ids(r)).toEqual([storyId, other]);
+    expect(rpc).not.toHaveBeenCalledWith("story_ids_geo_allowed", expect.anything());
+    expect(JSON.stringify(r)).not.toContain("geo_rule");
+  });
+  it("passes null for anonymous callers and hides targeted rows", async () => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "");
+    const rpc = setup({ data: [], error: null });
+    expect(ids(await readStories({}))).toEqual([other]);
+    expect(rpc).toHaveBeenCalledWith("story_ids_geo_allowed", { p_telegram_id: null, p_story_ids: [storyId] });
+  });
+  it("fails closed on RPC error or throw", async () => {
+    setup({ data: null, error: { message: "x" } });
+    expect(ids(await readStories({ initData: signed(42) }))).toEqual([other]);
+    setup(async () => { throw new Error("x"); });
+    expect(ids(await readStories({ initData: signed(42) }))).toEqual([other]);
+  });
+  it("view/like/comment refuse a targeted story the user may not see", async () => {
+    for (const result of [{ data: false, error: null }, { data: null, error: { message: "x" } }]) {
+      const from = vi.fn(() => table({ data: { id: storyId, is_private: false, geo_rule: { zones: ["k1"] } }, error: null }));
+      const rpc = vi.fn(async () => result);
+      mocks.db.mockReturnValue({ from, rpc });
+      const inactive = { ok: false, error: "inactive" };
+      expect(await viewStory({ initData: signed(42), storyId })).toEqual(inactive);
+      expect(await likeStory({ initData: signed(42), storyId })).toEqual(inactive);
+      expect(await commentStory({ initData: signed(42), storyId, body: "hi" })).toEqual(inactive);
+      expect(rpc).toHaveBeenCalledWith("story_geo_allows", { p_telegram_id: 42, p_story_id: storyId });
+      expect(rpc).not.toHaveBeenCalledWith("grant_story_task", expect.anything());
+    }
+  });
+  it("allows view when story_geo_allows is true", async () => {
+    const from = vi.fn(() => table({ data: { id: storyId, is_private: false, geo_rule: { zones: ["k1"] } }, error: null }));
+    const rpc = vi.fn(async (name: string) => (name === "story_geo_allows" ? { data: true, error: null } : { data: 2, error: null }));
+    mocks.db.mockReturnValue({ from, rpc });
+    expect(await viewStory({ initData: signed(42), storyId })).toEqual({ ok: true, tasks: 2 });
+  });
+});
