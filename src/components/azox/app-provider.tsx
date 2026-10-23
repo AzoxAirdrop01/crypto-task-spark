@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { fetchGameSwitches, fetchGamingFace } from "@/lib/azox-backend";
+import { fetchGameSwitches, fetchGamingFace, GAME_DISABLED_EVENT } from "@/lib/azox-backend";
 import type { GamingFace } from "@/lib/gaming-face";
 import { allGamesOn, toSwitchId, type GameId, type GameSwitches } from "@/lib/game-switches";
 import type { RewardClaim } from "@/lib/rewards";
@@ -21,7 +21,7 @@ export function AzoxProvider({ children }: { children: ReactNode }) {
     progress,
     level,
     addPoints: rawAddPoints,
-    tap,
+    tap: rawTap,
     globalWins,
   } = usePoints();
 
@@ -31,12 +31,24 @@ export function AzoxProvider({ children }: { children: ReactNode }) {
     void fetchGameSwitches().then(setGameSwitches);
   }, []);
   useEffect(() => refreshGameSwitches(), [refreshGameSwitches]);
+  // A server "game_disabled" refusal means switches changed while open.
+  useEffect(() => {
+    const onDisabled = () => refreshGameSwitches();
+    window.addEventListener(GAME_DISABLED_EVENT, onDisabled);
+    return () => window.removeEventListener(GAME_DISABLED_EVENT, onDisabled);
+  }, [refreshGameSwitches]);
   const [gamingFace, setGamingFace] = useState<GamingFace | null>(null);
   const refreshGamingFace = useCallback(() => {
     void fetchGamingFace().then(setGamingFace);
   }, []);
   useEffect(() => refreshGamingFace(), [refreshGamingFace]);
   const isGameEnabled = useCallback((id: GameId) => gameSwitches[id] !== false, [gameSwitches]);
+
+  // Never accept taps while Main Tap is paused.
+  const tap = useCallback(
+    (fingers?: number) => (gameSwitches["main-tap"] === false ? 0 : rawTap(fingers)),
+    [rawTap, gameSwitches],
+  );
 
   // Never add points for a game known to be paused.
   const addPoints = useCallback(

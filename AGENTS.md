@@ -20,3 +20,4 @@
 - The active Gaming face is read only through gaming-face.server.ts (30s cache, fail-open to Face 1); why: a face-switch outage must never hide the games.
 - Referral amounts and the friend-pick bonus are decided only in the DB function apply_referral_reward (face-aware); the app never computes or grants them; why: a client or webhook must not be able to mint referral rewards.
 - Story task rewards are granted only by the DB function grant_story_task, once per (user, story, kind), after the engagement was verified server-side; why: repeated comments or like toggling must never pay twice.
+- Main Tap is the admin game switch id main-tap; tap_batch claims are refused with game_disabled while it is OFF and the client stops accepting taps; why: a paused Main Tap must never pay out.
