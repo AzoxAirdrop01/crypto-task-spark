@@ -37,6 +37,13 @@ export const getDailyQuestions = createServerFn({ method: "POST" })
       const verified = await verifyTelegramInitData(data.initData);
       if (!verified.ok) return unavailable(`verification failed: ${verified.error}`);
 
+      try {
+        const { getGamingFaceCached } = await import("./gaming-face.server");
+        if ((await getGamingFaceCached()) === 2) return unavailable("gaming face 2");
+      } catch {
+        // Fail-open to Face 1; the individual game switch still applies below.
+      }
+
       const { isGameEnabled } = await import("./game-switches.server");
       if (!(await isGameEnabled("question-day"))) return unavailable("game disabled");
 
