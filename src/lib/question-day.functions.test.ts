@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   start: vi.fn(),
   enabled: vi.fn(),
+  face: vi.fn(),
   utcDay: vi.fn(),
 }));
 
@@ -18,6 +19,7 @@ vi.mock("@tanstack/react-start", () => ({
 }));
 vi.mock("./telegram-auth.server", () => ({ verifyTelegramInitData: mocks.verify }));
 vi.mock("./game-switches.server", () => ({ isGameEnabled: mocks.enabled }));
+vi.mock("./gaming-face.server", () => ({ getGamingFaceCached: mocks.face }));
 vi.mock("./azox-secure.server", () => ({
   db: () => ({
     rpc: (fn: string, args: unknown) =>
@@ -44,6 +46,7 @@ describe("Question Day verified daily reads", () => {
     mocks.verify.mockResolvedValue({ ok: true, user: { id: 42 } });
     mocks.utcDay.mockReturnValue("2026-10-17");
     mocks.enabled.mockResolvedValue(true);
+    mocks.face.mockResolvedValue(1);
     mocks.start.mockResolvedValue({ data: true, error: null });
     mocks.rpc.mockResolvedValue({
       data: { day: "2026-10-17", source_date: "2026-10-16", questions },
@@ -177,6 +180,35 @@ describe("Question Day verified daily reads", () => {
   });
 
   it("paused game stays unavailable and never records a start", async () => {
+    mocks.enabled.mockResolvedValue(false);
+    expect(await getDailyQuestions(input)).toEqual({ ok: false, error: "unavailable" });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it("Face 2 never reads questions or burns a daily start", async () => {
+    mocks.face.mockResolvedValue(2);
+    expect(await getDailyQuestions(input)).toEqual({ ok: false, error: "unavailable" });
+    expect(mocks.enabled).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("Face 1 and face read failure preserve daily reads (failure=%s)", async (failed) => {
+    if (failed) mocks.face.mockRejectedValue(new Error("private face read detail"));
+    expect(await getDailyQuestions(input)).toEqual({
+      ok: true,
+      questions: questions.map(({ slot: _slot, ...question }) => question),
+    });
+    expect(mocks.enabled).toHaveBeenCalledExactlyOnceWith("question-day");
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("get_daily_questions", { p_day: "2026-10-17" });
+    expect(mocks.start).toHaveBeenCalledExactlyOnceWith({
+      p_telegram_id: 42, p_game: "question", p_day: "2026-10-17",
+    });
+  });
+
+  it("face read failure still respects a paused Question Day switch", async () => {
+    mocks.face.mockRejectedValue(new Error("private face read detail"));
     mocks.enabled.mockResolvedValue(false);
     expect(await getDailyQuestions(input)).toEqual({ ok: false, error: "unavailable" });
     expect(mocks.rpc).not.toHaveBeenCalled();
