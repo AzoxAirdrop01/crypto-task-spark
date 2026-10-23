@@ -7,6 +7,7 @@ import { AzoxFooter } from "@/components/azox/footer";
 import { CATEGORIES, RANKS } from "@/lib/azox-data";
 import { AZOX_IMAGES } from "@/lib/azox-images";
 import { Button } from "@/components/ui/button";
+import { useAzox } from "@/components/azox/app-provider";
 import { formatHMS } from "@/components/azox/games/GlobalButton/useGlobalButton";
 
 const SLOT_MS = 3 * 60 * 60 * 1000; // every 3 hours (UTC+3 slots align with UTC)
@@ -29,11 +30,11 @@ function useGlobalButtonTimer() {
   return formatHMS(timeUntilNext);
 }
 
-export function HomePage() {
+function HomeGameCards() {
   const time = useGlobalButtonTimer();
 
   return (
-    <div className="flex flex-col gap-5">
+    <>
       {/* Global Button timer */}
       <section className="glass glow-purple flex items-center gap-3 rounded-2xl p-4">
         <div className="relative flex size-14 shrink-0 items-center justify-center">
@@ -83,8 +84,16 @@ export function HomePage() {
           </Link>
         </Button>
       </section>
+    </>
+  );
+}
 
+export function HomePage() {
+  const { gamingFace } = useAzox();
 
+  return (
+    <div className="flex flex-col gap-5">
+      {gamingFace === 1 && <HomeGameCards />}
       {/* Main click button */}
       <section className="flex flex-col items-center gap-2 py-4">
         <ClickButton />

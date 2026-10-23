@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ verify: vi.fn(), helpers: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  verify: vi.fn(), helpers: vi.fn(), face: vi.fn(), enabled: vi.fn(), claimTapBatch: vi.fn(), claimGameScore: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({
@@ -12,16 +14,26 @@ vi.mock("@tanstack/react-start", () => ({
 }));
 vi.mock("./telegram-auth.server", () => ({ verifyTelegramInitData: mocks.verify }));
 vi.mock("./game-switches.server", () => ({
-  isGameEnabled: async (id: string) => id !== "global-button" && id !== "main-tap",
+  isGameEnabled: mocks.enabled,
 }));
+vi.mock("./gaming-face.server", () => ({ getGamingFaceCached: mocks.face }));
 vi.mock("./azox-secure.server", () => {
   mocks.helpers();
-  return {};
+  return { claimTapBatch: mocks.claimTapBatch, claimGameScore: mocks.claimGameScore, utcDay: () => "2026-10-23" };
 });
 
-import { claimReward, globalButtonPress } from "./azox-secure.functions";
+import { claimReward, completeDailyGame, globalButtonPress } from "./azox-secure.functions";
 
 describe("game switch gate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.verify.mockResolvedValue({ ok: true, user: { id: 7 } });
+    mocks.face.mockResolvedValue(1);
+    mocks.enabled.mockImplementation(async (id: string) => id !== "global-button" && id !== "main-tap");
+    mocks.claimTapBatch.mockResolvedValue({ status: "granted", points: 5, rank: "Bronze" });
+    mocks.claimGameScore.mockResolvedValue({ status: "granted", points: 1, rank: "Bronze" });
+  });
+
   it("refuses a paused game before any DB write", async () => {
     mocks.verify.mockResolvedValue({ ok: true, user: { id: 7 } });
     const r = await globalButtonPress({ data: { initData: "fixture" } });
@@ -39,5 +51,71 @@ describe("game switch gate", () => {
     });
     expect(r).toEqual({ ok: false, error: "game_disabled" });
     expect(mocks.helpers).not.toHaveBeenCalled();
+  });
+
+  it.each(["shoot", "global-button", "word"])("Face 2 refuses %s before any write", async (game) => {
+    mocks.face.mockResolvedValue(2);
+    mocks.enabled.mockResolvedValue(true);
+    const result = game === "shoot"
+      ? await claimReward({ data: { initData: "fixture", claim: { type: "game_score", gameId: "shoot", score: 1 } } })
+      : game === "word"
+        ? await completeDailyGame({ data: { initData: "fixture", game: "word", indices: [0] } })
+        : await globalButtonPress({ data: { initData: "fixture" } });
+    expect(result).toEqual({ ok: false, error: "game_disabled" });
+    expect(mocks.enabled).not.toHaveBeenCalled();
+    expect(mocks.helpers).not.toHaveBeenCalled();
+    expect(mocks.claimTapBatch).not.toHaveBeenCalled();
+  });
+
+  it("Face 2 leaves Main Tap payable when its own switch is ON", async () => {
+    mocks.face.mockResolvedValue(2);
+    mocks.enabled.mockResolvedValue(true);
+    const result = await claimReward({ data: {
+      initData: "fixture", claim: { type: "tap_batch", batchId: "abcdefgh12", tapUnits: 5 },
+    } });
+    expect(result).toEqual({ ok: true, granted: true, points: 5, rank: "Bronze" });
+    expect(mocks.enabled).toHaveBeenCalledWith("main-tap");
+    expect(mocks.claimTapBatch).toHaveBeenCalledWith(7, "abcdefgh12", 5);
+  });
+
+  it.each([false, true])("Face 1 respects Main Tap switch enabled=%s", async (enabled) => {
+    mocks.enabled.mockResolvedValue(enabled);
+    const result = await claimReward({ data: {
+      initData: "fixture", claim: { type: "tap_batch", batchId: "abcdefgh12", tapUnits: 5 },
+    } });
+    expect(result).toEqual(enabled
+      ? { ok: true, granted: true, points: 5, rank: "Bronze" }
+      : { ok: false, error: "game_disabled" });
+    expect(mocks.enabled).toHaveBeenCalledWith("main-tap");
+    expect(mocks.claimTapBatch).toHaveBeenCalledTimes(enabled ? 1 : 0);
+  });
+
+  it.each([false, true])("failed face read respects Main Tap switch enabled=%s", async (enabled) => {
+    mocks.face.mockRejectedValue(new Error("unavailable"));
+    mocks.enabled.mockResolvedValue(enabled);
+    const result = await claimReward({ data: {
+      initData: "fixture", claim: { type: "tap_batch", batchId: "abcdefgh12", tapUnits: 5 },
+    } });
+    expect(result).toEqual(enabled
+      ? { ok: true, granted: true, points: 5, rank: "Bronze" }
+      : { ok: false, error: "game_disabled" });
+    expect(mocks.enabled).toHaveBeenCalledWith("main-tap");
+    expect(mocks.claimTapBatch).toHaveBeenCalledTimes(enabled ? 1 : 0);
+  });
+
+  it.each([
+    { failed: false, enabled: false }, { failed: false, enabled: true },
+    { failed: true, enabled: false }, { failed: true, enabled: true },
+  ])("normal games respect their switch with face read failure=$failed, enabled=$enabled", async ({ failed, enabled }) => {
+    if (failed) mocks.face.mockRejectedValue(new Error("unavailable"));
+    mocks.enabled.mockResolvedValue(enabled);
+    const result = await claimReward({ data: {
+      initData: "fixture", claim: { type: "game_score", gameId: "shoot", score: 1 },
+    } });
+    expect(result).toEqual(enabled
+      ? { ok: true, granted: true, points: 1, rank: "Bronze" }
+      : { ok: false, error: "game_disabled" });
+    expect(mocks.enabled).toHaveBeenCalledWith("shoot");
+    expect(mocks.claimGameScore).toHaveBeenCalledTimes(enabled ? 1 : 0);
   });
 });

@@ -60,7 +60,7 @@ export const Route = createFileRoute("/games/$game")({
 
 function GameRoute() {
   const { game } = Route.useLoaderData();
-  const { addPoints, isGameEnabled, refreshGameSwitches } = useAzox();
+  const { addPoints, isGameEnabled, refreshGameSwitches, gamingFace } = useAzox();
   const navigate = useNavigate();
   useEffect(() => refreshGameSwitches(), [refreshGameSwitches]);
   useEffect(() => {
@@ -72,6 +72,10 @@ function GameRoute() {
     window.addEventListener(GAME_DISABLED_EVENT, onDisabled);
     return () => window.removeEventListener(GAME_DISABLED_EVENT, onDisabled);
   }, [navigate, refreshGameSwitches]);
+  if (gamingFace === null) {
+    return <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (gamingFace === 2) return <PausedScreen />;
   const switchId = toSwitchId(game);
   if (switchId && !isGameEnabled(switchId)) return <PausedScreen />;
   if (game === "shoot") {
