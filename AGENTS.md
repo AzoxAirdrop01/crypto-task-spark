@@ -25,3 +25,4 @@
 - Main Tap is the admin game switch id main-tap; tap_batch claims are refused with game_disabled while it is OFF and the client stops accepting taps; why: a paused Main Tap must never pay out.
 - User geo (country/region/city/lat/lon/zones) is captured server-side only from verified users via upsert_user_geo; raw IPs are never copied into it; why: targeting needs coarse location, not identity.
 - Story geo targeting is enforced server-side and fails closed for targeted stories; why: a geo-restricted promo must not leak when the check fails.
+- Story media may live in R2 (`media_store='r2'`), served only via presigned URLs from `r2-presign.server.ts`; env vars R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET are Cloudflare runtime secrets and must never be logged or exposed to the client.

@@ -1,5 +1,5 @@
 import { createHmac } from "crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ db: vi.fn() }));
 vi.mock("@/integrations/external-supabase/admin.server", () => ({
   getExternalSupabaseAdmin: mocks.db,
@@ -206,6 +206,61 @@ describe("Stories validation and privacy", () => {
       expect(await action({ initData: signed(42), storyId, body: "Hello" })).toEqual({ ok: false, error: "server_error" });
     }
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+describe("Story media stores", () => {
+  const path = "2026-10-23/3f2a1c9e-1111-4222-8333-444455556666.mp4";
+  const base = {
+    id: storyId, media_type: "video", media_url: "https://example.com/video.mp4",
+    media_path: path, link_url: null, created_at: "c", expires_at: "e", geo_rule: null,
+  };
+  beforeEach(() => {
+    mocks.db.mockReset();
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", token);
+    vi.stubEnv("R2_ACCOUNT_ID", "abc123def456");
+    vi.stubEnv("R2_ACCESS_KEY_ID", "AKIAEXAMPLE0000");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "secretKey+/ExampleSecret0123456789abcdef");
+    vi.stubEnv("R2_BUCKET", "azox-stories");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+  function setup(is_private: boolean, media_store = "r2", media_path: string | null = path) {
+    const stories = table({ data: [{ ...base, is_private, media_store, media_path }], error: null });
+    const from = vi.fn((name) => name === "stories" ? stories : table({ data: [], error: null }));
+    const createSignedUrl = vi.fn(async () => ({ data: { signedUrl: "https://example.com/private-signed" } }));
+    const storageFrom = vi.fn(() => ({ createSignedUrl }));
+    mocks.db.mockReturnValue({ from, storage: { from: storageFrom } });
+    return { stories, createSignedUrl, storageFrom };
+  }
+  it.each([false, true])("presigns R2 media for private=%s without exposing storage fields", async (isPrivate) => {
+    const { stories, storageFrom } = setup(isPrivate);
+    // Verified admin can see private rows without a recipient lookup.
+    const result = await readStories({ initData: signed(2143639881) });
+    expect(result.stories).toHaveLength(1);
+    const url = new URL(result.stories[0]?.media_url ?? "");
+    expect(url.origin).toBe("https://abc123def456.r2.cloudflarestorage.com");
+    expect(url.pathname).toBe(`/azox-stories/${path}`);
+    expect(url.searchParams.get("X-Amz-Expires")).toBe("21600");
+    expect(url.searchParams.get("X-Amz-Signature")).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.stories[0]).not.toHaveProperty("media_path");
+    expect(result.stories[0]).not.toHaveProperty("media_store");
+    expect(stories["select"]).toHaveBeenCalledWith(expect.stringContaining("media_store"));
+    expect(storageFrom).not.toHaveBeenCalled();
+  });
+  it.each([false, true])("excludes R2 media for private=%s when configuration is missing", async (isPrivate) => {
+    setup(isPrivate);
+    for (const name of ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"]) vi.stubEnv(name, "");
+    expect((await readStories({ initData: signed(2143639881) })).stories).toEqual([]);
+  });
+  it.each([null, "/x", "a/../b"])("excludes R2 media with missing or invalid path %s", async (pathValue) => {
+    setup(false, "r2", pathValue);
+    expect((await readStories({ initData: signed(2143639881) })).stories).toEqual([]);
+  });
+  it.each([false, true])("preserves existing media resolution for private=%s", async (isPrivate) => {
+    const { createSignedUrl } = setup(isPrivate, "supabase");
+    const result = await readStories({ initData: signed(2143639881) });
+    expect(result.stories[0]?.media_url).toBe(isPrivate ? "https://example.com/private-signed" : base.media_url);
+    if (isPrivate) expect(createSignedUrl).toHaveBeenCalledWith(path, 7200);
+    else expect(createSignedUrl).not.toHaveBeenCalled();
   });
 });
 describe("Story geo targeting", () => {

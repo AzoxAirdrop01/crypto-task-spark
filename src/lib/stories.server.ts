@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getExternalSupabaseAdmin } from "@/integrations/external-supabase/admin.server";
 import { verifyTelegramInitData } from "./telegram-auth.server";
 import { canSeeStory, resolveStoryMedia } from "./story-visibility";
+import { presignR2Get, readR2Config } from "./r2-presign.server";
 
 // Never export this identity to client-reachable modules.
 const STORY_ADMIN_ID = 2143639881;
@@ -142,11 +143,12 @@ export async function readStories(input: unknown): Promise<StoriesResult> {
   const isAdmin = auth.ok && isStoryAdmin(auth.user.id);
   try {
     const db = getExternalSupabaseAdmin();
+    const r2 = readR2Config();
     const allRows =
       check(
         await db
           .from("stories")
-          .select("id,media_type,media_url,link_url,created_at,expires_at,is_private,media_path,geo_rule")
+          .select("id,media_type,media_url,link_url,created_at,expires_at,is_private,media_path,media_store,geo_rule")
           .gt("expires_at", new Date().toISOString())
           .order("created_at", { ascending: true }),
       ) ?? [];
@@ -200,7 +202,11 @@ export async function readStories(input: unknown): Promise<StoriesResult> {
     const resolved = await Promise.all(
       visible.map(async (r) => ({
         r,
-        url: await resolveStoryMedia(
+        url: r.media_store === "r2"
+          ? (r2 && r.media_path)
+            ? await presignR2Get(r2, String(r.media_path)).catch(() => null)
+            : null
+          : await resolveStoryMedia(
           {
             isPrivate: Boolean(r.is_private),
             mediaUrl: r.media_url ?? null,
