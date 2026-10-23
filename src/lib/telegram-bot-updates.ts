@@ -4,6 +4,7 @@ export type PickResult = "ok" | "self" | "no_referrer" | "already_registered" | 
 export type BotDeps = {
   getFace: () => Promise<1 | 2>;
   recordPick: (referrerId: number, friendId: number) => Promise<PickResult>;
+  getReferralLink: (telegramId: number) => Promise<string | null>;
   send: (chatId: number, text: string, extra?: Record<string, unknown>) => Promise<void>;
 };
 export const FRIEND_REQUEST_ID = 1;
@@ -71,6 +72,21 @@ export async function handleBotUpdate(update: unknown, deps: BotDeps): Promise<v
     if (counts.limit) lines.push("You reached the maximum number of saved friends.");
     if (counts.error) lines.push("Something went wrong. Please try again later.");
     if (lines.length) await deps.send(chatId, lines.join("\n"), removeKeyboard);
+    if (counts.ok > 0) {
+      try {
+        const link = await deps.getReferralLink(senderId);
+        if (link) {
+          await deps.send(chatId, `Join me on AZOX and earn points:\n${link}`, {
+            reply_markup: { inline_keyboard: [[{ text: "Open AZOX", url: link }]] },
+          });
+          await deps.send(chatId,
+            "Forward the message above to your picked friends: hold it, tap Forward, and select several chats.",
+          );
+        }
+      } catch {
+        // Picks are already saved; invite lookup or delivery must not fail the update.
+      }
+    }
     return;
   }
 

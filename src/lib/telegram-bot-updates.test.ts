@@ -6,6 +6,7 @@ function deps(face: 1 | 2 = 2) {
   return {
     getFace: vi.fn<BotDeps["getFace"]>().mockResolvedValue(face),
     recordPick: vi.fn<BotDeps["recordPick"]>().mockResolvedValue("ok"),
+    getReferralLink: vi.fn<BotDeps["getReferralLink"]>().mockResolvedValue(null),
     send: vi.fn<BotDeps["send"]>().mockResolvedValue(undefined),
   };
 }
@@ -71,6 +72,51 @@ describe("Telegram friend picker", () => {
     await handleBotUpdate(shared([200]), d);
     expect(d.recordPick).not.toHaveBeenCalled();
     expect(d.send).toHaveBeenCalledExactlyOnceWith(123, "Friend invites are not active right now.", removed);
+    expect(d.getReferralLink).not.toHaveBeenCalled();
+  });
+
+  it("sends one forwardable personal invite after confirmation, only to the referrer", async () => {
+    const d = deps();
+    const link = `${MINI_APP_URL}?startapp=AZOX123`;
+    d.getReferralLink.mockResolvedValue(link);
+    await handleBotUpdate(shared([200, 201]), d);
+    expect(d.getReferralLink).toHaveBeenCalledExactlyOnceWith(123);
+    expect(d.send.mock.calls).toEqual([
+      [123, "Saved 2 friend(s). If they join AZOX with your link, you earn the referral bonus together.", removed],
+      [123, `Join me on AZOX and earn points:\n${link}`, {
+        reply_markup: { inline_keyboard: [[{ text: "Open AZOX", url: link }]] },
+      }],
+      [123, "Forward the message above to your picked friends: hold it, tap Forward, and select several chats."],
+    ]);
+    expect(d.send.mock.calls[1]?.[2]).not.toHaveProperty("protect_content");
+  });
+
+  it("never fetches or sends an invite when all friends already registered", async () => {
+    const d = deps();
+    d.recordPick.mockResolvedValue("already_registered");
+    d.getReferralLink.mockResolvedValue(`${MINI_APP_URL}?startapp=AZOX123`);
+    await handleBotUpdate(shared([200]), d);
+    expect(d.getReferralLink).not.toHaveBeenCalled();
+    expect(d.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps just the confirmation when the personal link is missing", async () => {
+    const d = deps();
+    await expect(handleBotUpdate(shared([200]), d)).resolves.toBeUndefined();
+    expect(d.getReferralLink).toHaveBeenCalledExactlyOnceWith(123);
+    expect(d.send).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["lookup", "card", "instructions"])("swallows invite %s errors after saving picks", async (step) => {
+    const d = deps();
+    d.getReferralLink.mockResolvedValue(`${MINI_APP_URL}?startapp=AZOX123`);
+    if (step === "lookup") d.getReferralLink.mockRejectedValue(new Error("unavailable"));
+    if (step === "card") d.send.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("unavailable"));
+    if (step === "instructions") d.send.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("unavailable"));
+    await expect(handleBotUpdate(shared([200]), d)).resolves.toBeUndefined();
+    expect(d.recordPick).toHaveBeenCalledExactlyOnceWith(123, 200);
+    expect(d.send.mock.calls.every(([chatId]) => chatId === 123)).toBe(true);
   });
 
   it.each<[PickResult, string]>([
