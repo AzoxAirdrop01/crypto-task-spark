@@ -97,18 +97,30 @@ async function active(storyId: string) {
   return check(
     await getExternalSupabaseAdmin()
       .from("stories")
-      .select("id,is_private")
+      .select("id,is_private,geo_rule")
       .eq("id", storyId)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle(),
-  ) as { id: string; is_private?: boolean | null } | null;
+  ) as { id: string; is_private?: boolean | null; geo_rule?: unknown } | null;
 }
 /** Active AND visible to this verified user; private non-recipients look inactive. */
 async function activeVisible(storyId: string, userId: number): Promise<boolean> {
   const story = await active(storyId);
   if (!story) return false;
   const isAdmin = isStoryAdmin(userId);
-  if (!story.is_private || isAdmin) return true;
+  if (isAdmin) return true;
+  if (story.geo_rule !== null && story.geo_rule !== undefined) {
+    try {
+      const { data, error } = await getExternalSupabaseAdmin().rpc("story_geo_allows", {
+        p_telegram_id: userId,
+        p_story_id: storyId,
+      });
+      if (error || data !== true) return false;
+    } catch {
+      return false;
+    }
+  }
+  if (!story.is_private) return true;
   const rec = check(
     await getExternalSupabaseAdmin()
       .from("story_recipients")
@@ -134,7 +146,7 @@ export async function readStories(input: unknown): Promise<StoriesResult> {
       check(
         await db
           .from("stories")
-          .select("id,media_type,media_url,link_url,created_at,expires_at,is_private,media_path")
+          .select("id,media_type,media_url,link_url,created_at,expires_at,is_private,media_path,geo_rule")
           .gt("expires_at", new Date().toISOString())
           .order("created_at", { ascending: true }),
       ) ?? [];
@@ -151,7 +163,7 @@ export async function readStories(input: unknown): Promise<StoriesResult> {
       );
       mine = new Set((rec ?? []).map((r) => String(r.story_id)));
     }
-    const visible = allRows.filter((r) =>
+    const privacyVisible = allRows.filter((r) =>
       canSeeStory({
         isPrivate: Boolean(r.is_private),
         userId,
@@ -159,6 +171,27 @@ export async function readStories(input: unknown): Promise<StoriesResult> {
         recipients: userId !== null && mine.has(String(r.id)) ? [userId] : [],
       }),
     );
+    // Geo targeting: fail closed for targeted rows; admin sees everything.
+    let visible = privacyVisible;
+    if (!isAdmin) {
+      const targeted = privacyVisible
+        .filter((r) => r.geo_rule !== null && r.geo_rule !== undefined)
+        .map((r) => String(r.id));
+      if (targeted.length) {
+        let allowed = new Set<string>();
+        try {
+          const { data, error } = await db.rpc("story_ids_geo_allowed", {
+            p_telegram_id: userId,
+            p_story_ids: targeted,
+          });
+          if (!error && Array.isArray(data)) allowed = new Set(data.map((x) => String(x)));
+        } catch {
+          allowed = new Set();
+        }
+        const blocked = new Set(targeted.filter((id) => !allowed.has(id)));
+        visible = privacyVisible.filter((r) => !blocked.has(String(r.id)));
+      }
+    }
     // Private media: short-lived signed URL from the private bucket, or excluded.
     const sign = async (path: string) => {
       const { data } = await db.storage.from("stories-private").createSignedUrl(path, 7200);
