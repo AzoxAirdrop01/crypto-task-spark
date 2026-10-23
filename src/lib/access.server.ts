@@ -2,6 +2,7 @@ import { getExternalSupabaseAdmin } from "@/integrations/external-supabase/admin
 import { verifyTelegramInitData } from "./telegram-auth.server";
 import { locationInput, policyInput } from "./access-schemas";
 import { LOCATION_MIN_INTERVAL_SECONDS } from "./location-limits";
+import { captureGpsGeo, captureIpGeo } from "./geo-capture.server";
 
 // Access policy + location writes for the VERIFIED Telegram user only.
 // Never log coordinates or initData.
@@ -51,7 +52,7 @@ export async function readAccessPolicy(
     if (!p.success) return fail("missing");
     const id = await verifiedId(p.data.initData);
     if (typeof id !== "number") return id;
-    await recordCallerIp(id);
+    await Promise.all([recordCallerIp(id), captureIpGeo(id)]);
     const pol = await policyFor(id);
     return pol ? { ok: true, ...pol } : fail("server_error");
   } catch {
@@ -78,7 +79,15 @@ export async function writeLocation(
       p_min_interval_seconds: LOCATION_MIN_INTERVAL_SECONDS,
     });
     if (error) return fail(error.code === "23514" ? "invalid" : "server_error");
-    return { ok: true, stored: (data as { stored?: unknown } | null)?.stored === true };
+    const stored = (data as { stored?: unknown } | null)?.stored === true;
+    if (stored) {
+      try {
+        await captureGpsGeo(id, p.data.latitude, p.data.longitude);
+      } catch {
+        // swallow
+      }
+    }
+    return { ok: true, stored };
   } catch {
     return fail("server_error");
   }
