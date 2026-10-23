@@ -246,6 +246,7 @@ export async function submitTapBatch(batchId: string, tapUnits: number): Promise
     });
     if (res.ok) return res.points;
     console.warn("[azox-backend] tap batch rejected:", res.error);
+    noteGameDisabled(res.error);
   } catch (e) {
     console.error("[azox-backend] tap batch failed", e);
   }

@@ -197,7 +197,9 @@ export const claimReward = createServerFn({ method: "POST" })
           ? "clicker"
           : c.type === "game_score"
             ? c.gameId
-            : null;
+            : c.type === "tap_batch"
+              ? "main-tap"
+              : null;
     if (gameForClaim && (await gameOff(gameForClaim))) return fail("game_disabled");
     try {
       const h = await helpers();

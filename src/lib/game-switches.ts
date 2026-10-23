@@ -8,6 +8,7 @@ export const GAME_SWITCH_IDS = [
   "box",
   "global-button",
   "clicker",
+  "main-tap",
 ] as const;
 
 export type GameId = (typeof GAME_SWITCH_IDS)[number];
