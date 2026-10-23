@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { handleBotUpdate, verifyWebhookSecret, type BotDeps, type PickResult } from "@/lib/telegram-bot-updates";
+import { referralLinkFor } from "@/lib/referral-link";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const PICK_RESULTS = new Set<PickResult>(["ok", "self", "no_referrer", "already_registered", "limit"]);
@@ -53,6 +54,19 @@ export const Route = createFileRoute("/api/public/telegram/webhook")({
           const { db } = await import("@/lib/azox-secure.server");
           const deps: BotDeps = {
             getFace: getGamingFaceCached,
+            getReferralLink: async (telegramId) => {
+              try {
+                const { data, error } = await db().from("users")
+                  .select("referral_code")
+                  .eq("telegram_id", telegramId)
+                  .maybeSingle();
+                const code = data?.referral_code;
+                return !error && typeof code === "string" && code.trim()
+                  ? referralLinkFor(code) : null;
+              } catch {
+                return null;
+              }
+            },
             recordPick: async (referrerId, friendId) => {
               try {
                 const { data, error } = await db().rpc("record_friend_pick", {
