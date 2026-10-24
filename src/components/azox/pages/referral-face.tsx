@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Check, ChevronRight, Copy, Share2, Users } from "lucide-react";
+import { Check, ChevronRight, Copy, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAzox } from "@/components/azox/app-provider";
 import logo from "@/assets/azox/azox-uploaded-logo.png.asset.json";
 import { referralLinkFor } from "@/lib/azox-backend";
-import { INVITE_BOT_URL } from "@/lib/referral-link";
 import { getWebApp } from "@/lib/telegram";
 
 function openTelegramLink(url: string): void {
@@ -56,16 +55,13 @@ export function ReferralFace() {
         <Button onClick={() => openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referral)}&text=${encodeURIComponent("Join me on AZOX")}`)} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
           <Share2 aria-hidden="true" /> Share
         </Button>
-        <Button variant="outline" onClick={() => openTelegramLink(INVITE_BOT_URL)} className="h-auto min-h-10 w-full whitespace-normal">
-          <Users aria-hidden="true" /> Pick friends from Telegram
-        </Button>
       </div>
 
       <section className="glass rounded-2xl p-4">
         <h2 className="text-sm font-bold">How rewards work</h2>
         <ul className="mt-3 list-disc space-y-3 pl-4 text-sm leading-relaxed text-muted-foreground">
-          <li>+5,000 points for you for every new friend who joins with your link.</li>
-          <li>If you picked that friend from your Telegram list before they joined: your friend gets +3,000 points, and both of you get 10 tasks.</li>
+          <li>+5,000 points and 10 tasks for you for every new friend who joins with your link.</li>
+          <li>Your friend gets +3,000 points and 10 tasks when joining with your link.</li>
           <li>Rewards apply only to brand-new accounts. Accounts that already exist do not qualify.</li>
         </ul>
       </section>
