@@ -60,8 +60,7 @@ export function ReferralFace() {
       <section className="glass rounded-2xl p-4">
         <h2 className="text-sm font-bold">How rewards work</h2>
         <ul className="mt-3 list-disc space-y-3 pl-4 text-sm leading-relaxed text-muted-foreground">
-          <li>+5,000 points and 10 tasks for you for every new friend who joins with your link.</li>
-          <li>Your friend gets +3,000 points and 10 tasks when joining with your link.</li>
+          <li>+5,000 points for you for every new friend who joins with your link.</li>
           <li>Rewards apply only to brand-new accounts. Accounts that already exist do not qualify.</li>
         </ul>
       </section>
